@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SYSTEM // Daily Leveling</title>
+  
+  <!-- Configurações PWA -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#00d2ff">
+
+  <style>
+    :root {
+      --bg-color: #050811;
+      --panel-bg: rgba(10, 18, 32, 0.95);
+      --neon-blue: #00d2ff;
+      --neon-glow: rgba(0, 210, 255, 0.5);
+      --neon-purple: #9b51e0;
+      --text-color: #e0f7fc;
+      --text-dim: #5c809e;
+      --danger: #ff4757;
+      --success: #2ed573;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      display: flex;
+      justify-content: center;
+      padding: 15px;
+      min-height: 100vh;
+      background-image: radial-gradient(circle at center, #0d1b33 0%, #050811 100%);
+      overflow-x: hidden;
+    }
+
+    @keyframes systemAppear {
+      0% { opacity: 0; transform: scale(0.92) translateY(20px); filter: blur(10px); }
+      100% { opacity: 1; transform: scale(1) translateY(0); filter: blur(0); }
+    }
+
+    @keyframes pulseGlow {
+      0%, 100% { box-shadow: 0 0 15px var(--neon-glow), inset 0 0 15px rgba(0, 210, 255, 0.1); }
+      50% { box-shadow: 0 0 25px rgba(0, 210, 255, 0.8), inset 0 0 20px rgba(0, 210, 255, 0.2); }
+    }
+
+    .system-window {
+      width: 100%;
+      max-width: 500px;
+      background: var(--panel-bg);
+      border: 2px solid var(--neon-blue);
+      border-radius: 8px;
+      padding: 20px;
+      backdrop-filter: blur(10px);
+      animation: systemAppear 0.5s ease-out forwards, pulseGlow 4s infinite alternate;
+      position: relative;
+    }
+
+    .header {
+      text-align: center;
+      border-bottom: 1px solid var(--neon-blue);
+      padding-bottom: 10px;
+      margin-bottom: 15px;
+    }
+
+    .header h1 {
+      font-size: 1.4rem;
+      letter-spacing: 3px;
+      color: var(--neon-blue);
+      text-shadow: 0 0 10px var(--neon-blue);
+    }
+
+    .nav-tabs {
+      display: flex;
+      gap: 5px;
+      margin-bottom: 15px;
+      border-bottom: 1px solid rgba(0, 210, 255, 0.2);
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 8px 4px;
+      background: transparent;
+      border: none;
+      color: var(--text-dim);
+      font-size: 0.8rem;
+      font-weight: bold;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+    }
+
+    .tab-btn.active {
+      color: var(--neon-blue);
+      border-bottom-color: var(--neon-blue);
+      text-shadow: 0 0 5px var(--neon-blue);
+    }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    .player-status {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(0, 210, 255, 0.05);
+      padding: 12px;
+      border-radius: 5px;
+      margin-bottom: 15px;
+      border: 1px solid rgba(0, 210, 255, 0.2);
+    }
+
+    .exp-container { margin-bottom: 15px; }
+    .bar-bg {
+      width: 100%;
+      background: #0d1626;
+      height: 12px;
+      border-radius: 6px;
+      border: 1px solid var(--neon-blue);
+      overflow: hidden;
+      margin-top: 5px;
+    }
+    .bar-fill {
+      height: 100%;
+      background: var(--neon-blue);
+      width: 0%;
+      box-shadow: 0 0 10px var(--neon-blue);
+      transition: width 0.4s ease;
+    }
+
+    .hp-fill {
+      background: var(--danger);
+      box-shadow: 0 0 10px var(--danger);
+    }
+
+    .stat-bar-item { margin-bottom: 12px; }
+    .stat-label { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 4px; }
+
+    .quest-title {
+      font-size: 1rem;
+      color: var(--neon-blue);
+      margin-bottom: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .quest-list { list-style: none; }
+    .quest-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(16, 28, 46, 0.6);
+      border: 1px solid rgba(0, 210, 255, 0.15);
+      padding: 10px;
+      margin-bottom: 8px;
+      border-radius: 5px;
+    }
+    .quest-item.completed {
+      opacity: 0.6;
+      border-color: rgba(46, 213, 115, 0.3);
+    }
+
+    .btn-sm {
+      background: transparent;
+      border: 1px solid var(--neon-blue);
+      color: var(--neon-blue);
+      padding: 4px 8px;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 0.75rem;
+    }
+    .btn-sm:hover { background: var(--neon-blue); color: #000; }
+    .btn-undo { border-color: #ffa502; color: #ffa502; }
+    .btn-undo:hover { background: #ffa502; color: #000; }
+    
+    .btn-del {
+      border-color: var(--danger);
+      color: var(--danger);
+      margin-left: 5px;
+    }
+    .btn-del:hover { background: var(--danger); color: #fff; }
+
+    .input-field, .select-field {
+      width: 100%;
+      padding: 10px;
+      background: rgba(16, 28, 46, 0.8);
+      border: 1px solid var(--neon-blue);
+      color: #fff;
+      border-radius: 5px;
+      outline: none;
+      font-size: 0.9rem;
+      margin-bottom: 10px;
+    }
+
+    .btn-primary {
+      width: 100%;
+      background: transparent;
+      border: 1px solid var(--neon-blue);
+      color: var(--neon-blue);
+      padding: 10px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: bold;
+      letter-spacing: 1px;
+      transition: all 0.2s;
+    }
+    .btn-primary:hover {
+      background: var(--neon-blue);
+      color: #000;
+      box-shadow: 0 0 10px var(--neon-blue);
+    }
+
+    .dungeon-card {
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid var(--neon-purple);
+      border-radius: 6px;
+      padding: 12px;
+      margin-bottom: 12px;
+      box-shadow: 0 0 10px rgba(155, 81, 224, 0.2);
+    }
+    .dungeon-title { color: var(--neon-purple); font-weight: bold; font-size: 1rem; margin-bottom: 5px; }
+
+    .profile-card {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(0, 210, 255, 0.3);
+      padding: 10px;
+      border-radius: 5px;
+      margin-bottom: 6px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="system-window">
+
+    <!-- LOGIN -->
+    <div id="login-screen">
+      <div class="header">
+        <h1>SYSTEM REGISTRATION</h1>
+        <small style="color: var(--text-dim)">IDENTIFICAÇÃO DE HUNTER</small>
+      </div>
+      <p style="font-size: 0.85rem; color: var(--text-dim); text-align: center; margin-bottom: 15px;">
+        Digite seu nome e defina ou digite seu PIN de segurança:
+      </p>
+      <input type="text" id="new-player-name" class="input-field" placeholder="Nome do Hunter:" />
+      <input type="password" id="new-player-pin" class="input-field" placeholder="PIN de 4 dígitos:" maxlength="6" />
+      <button class="btn-primary" onclick="loginOrCreatePlayer()">[ ACESSAR / REGISTRAR ]</button>
+      
+      <div style="margin-top: 20px;">
+        <div style="font-size: 0.8rem; color: var(--neon-blue); margin-bottom: 8px;">PERFIS SALVOS NESTE DISPOSITIVO:</div>
+        <div id="profiles-list"></div>
+      </div>
+    </div>
+
+    <!-- TELA PRINCIPAL -->
+    <div id="game-screen" style="display: none;">
+      <div class="header">
+        <h1>SYSTEM INTERFACE</h1>
+        <small style="color: var(--text-dim)">HUNTER STATUS & QUEST LOG</small>
+      </div>
+
+      <!-- STATUS DO JOGADOR -->
+      <div class="player-status">
+        <div>
+          <div><strong>HUNTER:</strong> <span id="player-name">---</span></div>
+          <div style="font-size: 0.85rem; color: var(--neon-blue); font-weight: bold;" id="player-title">E-Rank Hunter</div>
+        </div>
+        <div>
+          <span style="font-size: 1.1rem; font-weight: bold; color: var(--neon-blue);">LV. <span id="player-level">1</span></span>
+        </div>
+      </div>
+
+      <!-- EXP -->
+      <div class="exp-container">
+        <div style="display: flex; justify-content: space-between; font-size: 0.75rem;">
+          <span>EXP</span>
+          <span id="exp-text">0 / 100</span>
+        </div>
+        <div class="bar-bg"><div class="bar-fill" id="exp-fill"></div></div>
+      </div>
+
+      <!-- ABAS -->
+      <div class="nav-tabs">
+        <button class="tab-btn active" onclick="switchTab('tab-quests')">QUESTS</button>
+        <button class="tab-btn" onclick="switchTab('tab-dungeons')">DUNGEONS</button>
+        <button class="tab-btn" onclick="switchTab('tab-stats')">EVOLUÇÃO</button>
+        <button class="tab-btn" onclick="switchTab('tab-custom')">CRIAR</button>
+      </div>
+
+      <!-- ABA 1: QUESTS -->
+      <div id="tab-quests" class="tab-content active">
+        <div class="quest-title">[DAILY QUESTS]</div>
+        <ul class="quest-list" id="quest-list"></ul>
+        <button class="btn-primary" style="margin-top: 15px;" onclick="resetDay()">⚡ NOVO DIA / RENOVAR</button>
+      </div>
+
+      <!-- ABA 2: DUNGEONS -->
+      <div id="tab-dungeons" class="tab-content">
+        <div class="quest-title">[DUNGEONS / BOSS RAIDS]</div>
+        <div id="dungeons-list"></div>
+        <div style="border-top: 1px dashed var(--neon-purple); padding-top: 10px; margin-top: 15px;">
+          <div style="font-size: 0.85rem; color: var(--neon-purple); margin-bottom: 8px;"><b>CRIAR NOVA DUNGEON:</b></div>
+          <input type="text" id="dung-title" class="input-field" placeholder="Nome da Dungeon" />
+          <input type="number" id="dung-steps" class="input-field" placeholder="Qtd. de Etapas" />
+          <button class="btn-primary" style="border-color: var(--neon-purple); color: var(--neon-purple);" onclick="createDungeon()">[ ABRIR PORTAL ]</button>
+        </div>
+      </div>
+
+      <!-- ABA 3: EVOLUÇÃO -->
+      <div id="tab-stats" class="tab-content">
+        <div class="quest-title">[STATUS DE ATRIBUTOS]</div>
+        <div class="stat-bar-item">
+          <div class="stat-label"><span>💪 FORÇA / SAÚDE (STR)</span><span id="stat-str-val">0 pts</span></div>
+          <div class="bar-bg"><div class="bar-fill" id="stat-str-bar"></div></div>
+        </div>
+        <div class="stat-bar-item">
+          <div class="stat-label"><span>📚 INTELIGÊNCIA / ACADÊMICO (INT)</span><span id="stat-int-val">0 pts</span></div>
+          <div class="bar-bg"><div class="bar-fill" id="stat-int-bar"></div></div>
+        </div>
+        <div class="stat-bar-item">
+          <div class="stat-label"><span>💼 AGILIDADE / PROFISSIONAL (AGI)</span><span id="stat-agi-val">0 pts</span></div>
+          <div class="bar-bg"><div class="bar-fill" id="stat-agi-bar"></div></div>
+        </div>
+
+        <div style="margin-top: 25px; border-top: 1px dashed rgba(255, 71, 87, 0.4); padding-top: 15px;">
+          <button class="btn-primary" style="border-color: var(--danger); color: var(--danger);" onclick="resetPlayerProgress()">💣 RESETAR PROGRESSO</button>
+        </div>
+      </div>
+
+      <!-- ABA 4: CRIAR -->
+      <div id="tab-custom" class="tab-content">
+        <div class="quest-title">[CUSTOMIZAR DIÁRIAS]</div>
+        <input type="text" id="cust-name" class="input-field" placeholder="Nome da Missão (Ex: Meditar 10 min)" />
+        <select id="cust-cat" class="select-field">
+          <option value="str">Saúde / Fitness (STR)</option>
+          <option value="int">Acadêmico / Estudo (INT)</option>
+          <option value="agi">Profissional / Trabalho (AGI)</option>
+        </select>
+        <button class="btn-primary" onclick="addCustomQuest()">[ ADICIONAR MISSÃO (+50 XP) ]</button>
+      </div>
+
+      <button class="btn-primary" style="margin-top: 20px; border-color: var(--text-dim); color: var(--text-dim);" onclick="logout()">🔄 TROCAR PERFIL</button>
+    </div>
+
+  </div>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(err => console.error(err));
+      });
+    }
+
+    const rankTitles = {
+      E: "Hunter Rank-E",
+      D: "Hunter Rank-D",
+      C: "Hunter Rank-C",
+      B: "Hunter Rank-B",
+      A: "Hunter Rank-A",
+      S: "Hunter Rank-S"
+    };
+
+    function getRankKey(lvl) {
+      if (lvl >= 30) return 'S';
+      if (lvl >= 20) return 'A';
+      if (lvl >= 15) return 'B';
+      if (lvl >= 10) return 'C';
+      if (lvl >= 5)  return 'D';
+      return 'E';
+    }
+
+    const defaultQuests = [
+      { id: 1, name: "Treino Físico / Exercício", category: "str", xp: 50, desc: "+1 STR", isCustom: false },
+      { id: 2, name: "Beber 2.5L de Água", category: "str", xp: 50, desc: "+1 STR", isCustom: false },
+      { id: 3, name: "Estudo Acadêmico (30 min)", category: "int", xp: 50, desc: "+1 INT", isCustom: false },
+      { id: 4, name: "Leitura (15 pag)", category: "int", xp: 50, desc: "+1 INT", isCustom: false },
+      { id: 5, name: "Concluir Tarefa Prioritária de Trabalho", category: "agi", xp: 50, desc: "+1 AGI", isCustom: false }
+    ];
+
+    let player = null;
+
+    function encryptPin(pin) {
+      return btoa(pin);
+    }
+
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      event.target.classList.add('active');
+      document.getElementById(tabId).classList.add('active');
+    }
+
+    function getProfilesList() {
+      return JSON.parse(localStorage.getItem('solo_profiles_index')) || [];
+    }
+
+    // ATUALIZADO: Renderiza Nome, Level e Rank atual na lista inicial
+    function renderProfilesList() {
+      const profiles = getProfilesList();
+      const container = document.getElementById('profiles-list');
+      container.innerHTML = '';
+      if (profiles.length === 0) {
+        container.innerHTML = '<small style="color: var(--text-dim)">Nenhum perfil cadastrado.</small>';
+        return;
+      }
+      profiles.forEach(name => {
+        const pData = JSON.parse(localStorage.getItem(`solo_save_${name}`));
+        const lvl = pData ? pData.level : 1;
+        const rankKey = getRankKey(lvl);
+        const rankName = rankTitles[rankKey];
+
+        const card = document.createElement('div');
+        card.className = 'profile-card';
+        
+        card.innerHTML = `
+          <div style="flex: 1; cursor: pointer;" onclick="promptLogin('${name}')">
+            <strong>${name}</strong> 
+            <small style="color: var(--neon-blue)">[${rankName}]</small>
+            <div style="font-size: 0.75rem; color: var(--text-dim);">Nível ${lvl}</div>
+          </div>
+          <div>
+            <button class="btn-sm" style="margin-right: 5px;" onclick="promptLogin('${name}')">Entrar</button>
+            <button class="btn-sm btn-del" onclick="promptDeleteProfile(event, '${name}')">✕</button>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function promptLogin(name) {
+      const pinInput = prompt(`Digite o PIN de acesso para o perfil "${name}":`);
+      if (pinInput === null) return;
+
+      const savedData = JSON.parse(localStorage.getItem(`solo_save_${name}`));
+      if (savedData && savedData.encryptedPin) {
+        if (savedData.encryptedPin === encryptPin(pinInput)) {
+          loadPlayerProfile(name);
+        } else {
+          alert("[ERRO]: PIN incorreto!");
+        }
+      } else {
+        loadPlayerProfile(name);
+      }
+    }
+
+    function promptDeleteProfile(event, name) {
+      event.stopPropagation();
+      const pinInput = prompt(`[SEGURANÇA]: Digite o PIN para excluir o perfil "${name}":`);
+      if (pinInput === null) return;
+
+      const savedData = JSON.parse(localStorage.getItem(`solo_save_${name}`));
+      if (savedData && savedData.encryptedPin) {
+        if (savedData.encryptedPin === encryptPin(pinInput)) {
+          const confirmDel = confirm(`Deseja realmente excluir o perfil de "${name}"?`);
+          if (confirmDel) {
+            localStorage.removeItem(`solo_save_${name}`);
+            let profiles = getProfilesList();
+            profiles = profiles.filter(p => p !== name);
+            localStorage.setItem('solo_profiles_index', JSON.stringify(profiles));
+            renderProfilesList();
+          }
+        } else {
+          alert("[ERRO]: PIN incorreto! Exclusão cancelada.");
+        }
+      } else {
+        if (confirm(`Deseja excluir o perfil "${name}"?`)) {
+          localStorage.removeItem(`solo_save_${name}`);
+          let profiles = getProfilesList();
+          profiles = profiles.filter(p => p !== name);
+          localStorage.setItem('solo_profiles_index', JSON.stringify(profiles));
+          renderProfilesList();
+        }
+      }
+    }
+
+    function loginOrCreatePlayer() {
+      const name = document.getElementById('new-player-name').value.trim();
+      const pin = document.getElementById('new-player-pin').value.trim();
+
+      if (!name) return alert("Digite um nome de jogador!");
+      if (!pin || pin.length < 3) return alert("Por favor, digite um PIN de segurança válido (pelo menos 3 dígitos).");
+
+      const saved = localStorage.getItem(`solo_save_${name}`);
+      if (saved) {
+        const pData = JSON.parse(saved);
+        if (pData.encryptedPin && pData.encryptedPin !== encryptPin(pin)) {
+          return alert("[ERRO]: PIN incorreto para este perfil existente!");
+        }
+        loadPlayerProfile(name);
+      } else {
+        player = {
+          name: name,
+          encryptedPin: encryptPin(pin),
+          level: 1,
+          xp: 0,
+          xpNext: 100,
+          str: 0, int: 0, agi: 0,
+          completedQuests: [],
+          customQuests: [...defaultQuests],
+          dungeons: []
+        };
+        const profiles = getProfilesList();
+        if (!profiles.includes(name)) {
+          profiles.push(name);
+          localStorage.setItem('solo_profiles_index', JSON.stringify(profiles));
+        }
+        saveState();
+        document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('game-screen').style.display = 'block';
+        updateUI();
+      }
+    }
+
+    function loadPlayerProfile(name) {
+      const saved = localStorage.getItem(`solo_save_${name}`);
+      if (saved) {
+        player = JSON.parse(saved);
+        if (!player.customQuests) player.customQuests = [...defaultQuests];
+        if (!player.dungeons) player.dungeons = [];
+      }
+      saveState();
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('game-screen').style.display = 'block';
+      updateUI();
+    }
+
+    function saveState() {
+      if (player && player.name) {
+        localStorage.setItem(`solo_save_${player.name}`, JSON.stringify(player));
+      }
+    }
+
+    function updateUI() {
+      if (!player) return;
+
+      const rankKey = getRankKey(player.level);
+
+      document.getElementById('player-name').innerText = player.name;
+      document.getElementById('player-level').innerText = player.level;
+      document.getElementById('player-title').innerText = rankTitles[rankKey];
+
+      document.getElementById('exp-text').innerText = `${player.xp} / ${player.xpNext}`;
+      document.getElementById('exp-fill').style.width = `${(player.xp / player.xpNext) * 100}%`;
+
+      const maxStat = Math.max(player.str, player.int, player.agi, 10);
+      document.getElementById('stat-str-val').innerText = `${player.str} pts`;
+      document.getElementById('stat-str-bar').style.width = `${(player.str / maxStat) * 100}%`;
+      document.getElementById('stat-int-val').innerText = `${player.int} pts`;
+      document.getElementById('stat-int-bar').style.width = `${(player.int / maxStat) * 100}%`;
+      document.getElementById('stat-agi-val').innerText = `${player.agi} pts`;
+      document.getElementById('stat-agi-bar').style.width = `${(player.agi / maxStat) * 100}%`;
+
+      const qList = document.getElementById('quest-list');
+      qList.innerHTML = '';
+      player.customQuests.forEach(q => {
+        const isDone = player.completedQuests.includes(q.id);
+        const li = document.createElement('li');
+        li.className = `quest-item ${isDone ? 'completed' : ''}`;
+        
+        let deleteBtnHtml = '';
+        if (q.isCustom) {
+          deleteBtnHtml = `<button class="btn-sm btn-del" onclick="deleteCustomQuest(${q.id})">✕</button>`;
+        }
+
+        li.innerHTML = `
+          <div>
+            <div><strong>${q.name}</strong></div>
+            <small style="color: var(--neon-blue)">+${q.xp} XP | +1 ${q.category.toUpperCase()}</small>
+          </div>
+          <div>
+            ${!isDone 
+              ? `<button class="btn-sm" onclick="completeQuest(${q.id})">CONCLUIR</button>` 
+              : `<button class="btn-sm btn-undo" onclick="uncompleteQuest(${q.id})">↩ DESFAZER</button>`
+            }
+            ${deleteBtnHtml}
+          </div>
+        `;
+        qList.appendChild(li);
+      });
+
+      renderDungeons();
+    }
+
+    function completeQuest(id) {
+      if (player.completedQuests.includes(id)) return;
+      const q = player.customQuests.find(x => x.id === id);
+      player.completedQuests.push(id);
+      addXP(q.xp);
+      player[q.category] += 1;
+      saveState();
+      updateUI();
+    }
+
+    function uncompleteQuest(id) {
+      if (!player.completedQuests.includes(id)) return;
+      const q = player.customQuests.find(x => x.id === id);
+      player.completedQuests = player.completedQuests.filter(qId => qId !== id);
+      removeXP(q.xp);
+      if (player[q.category] > 0) player[q.category] -= 1;
+      saveState();
+      updateUI();
+    }
+
+    function addXP(amount) {
+      player.xp += amount;
+      if (player.xp >= player.xpNext) {
+        player.xp -= player.xpNext;
+        player.level += 1;
+        player.xpNext = Math.floor(player.xpNext * 1.3);
+        alert(`[LEVEL UP!]\n${player.name} alcançou o Nível ${player.level} (${rankTitles[getRankKey(player.level)]})!`);
+      }
+    }
+
+    function removeXP(amount) {
+      player.xp -= amount;
+      if (player.xp < 0) {
+        if (player.level > 1) {
+          player.level -= 1;
+          player.xpNext = Math.floor(player.xpNext / 1.3);
+          player.xp = player.xpNext + player.xp;
+        } else {
+          player.xp = 0;
+        }
+      }
+    }
+
+    function resetPlayerProgress() {
+      if (!confirm(`Deseja realmente resetar o progresso de ${player.name}?`)) return;
+      player.level = 1;
+      player.xp = 0;
+      player.xpNext = 100;
+      player.str = 0; player.int = 0; player.agi = 0;
+      player.completedQuests = [];
+      player.dungeons = [];
+      player.customQuests = [...defaultQuests];
+      saveState();
+      updateUI();
+    }
+
+    function addCustomQuest() {
+      const name = document.getElementById('cust-name').value.trim();
+      const cat = document.getElementById('cust-cat').value;
+      
+      if (!name) return alert("Digite o nome da missão!");
+
+      player.customQuests.push({ 
+        id: Date.now(), 
+        name: name, 
+        category: cat, 
+        xp: 50, 
+        desc: `+1 ${cat.toUpperCase()}`,
+        isCustom: true
+      });
+
+      saveState();
+      updateUI();
+      document.getElementById('cust-name').value = '';
+      alert("Nova missão adicionada com sucesso (+50 XP)!");
+    }
+
+    function deleteCustomQuest(id) {
+      player.customQuests = player.customQuests.filter(q => q.id !== id);
+      player.completedQuests = player.completedQuests.filter(qId => qId !== id);
+      saveState();
+      updateUI();
+    }
+
+    function createDungeon() {
+      const title = document.getElementById('dung-title').value.trim();
+      const steps = parseInt(document.getElementById('dung-steps').value) || 5;
+      if (!title) return alert("Digite o nome da Dungeon!");
+      player.dungeons.push({ id: Date.now(), title, totalSteps: steps, currentStep: 0 });
+      saveState();
+      updateUI();
+      document.getElementById('dung-title').value = '';
+      document.getElementById('dung-steps').value = '';
+    }
+
+    function damageBoss(dungeonId) {
+      const dung = player.dungeons.find(d => d.id === dungeonId);
+      dung.currentStep += 1;
+      if (dung.currentStep >= dung.totalSteps) {
+        alert(`[DUNGEON CLEARED!]\nVocê derrotou o Boss de "${dung.title}"! +300 XP!`);
+        addXP(300);
+        player.dungeons = player.dungeons.filter(d => d.id !== dungeonId);
+      } else {
+        addXP(30);
+      }
+      saveState();
+      updateUI();
+    }
+
+    function renderDungeons() {
+      const container = document.getElementById('dungeons-list');
+      container.innerHTML = '';
+      if (player.dungeons.length === 0) {
+        container.innerHTML = '<small style="color: var(--text-dim)">Nenhuma Dungeon ativa no momento.</small>';
+        return;
+      }
+      player.dungeons.forEach(d => {
+        const hpPercent = Math.max(0, 100 - (d.currentStep / d.totalSteps * 100));
+        const card = document.createElement('div');
+        card.className = 'dungeon-card';
+        card.innerHTML = `
+          <div class="dungeon-title">⚔️ ${d.title}</div>
+          <div style="font-size: 0.75rem; display: flex; justify-content: space-between;"><span>HP DO BOSS</span><span>Etapa ${d.currentStep} / ${d.totalSteps}</span></div>
+          <div class="bar-bg"><div class="bar-fill hp-fill" style="width: ${hpPercent}%"></div></div>
+          <button class="btn-sm" style="width: 100%; margin-top: 8px; border-color: var(--neon-purple); color: var(--neon-purple);" onclick="damageBoss(${d.id})">⚡ ATACAR BOSS</button>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function resetDay() {
+      player.completedQuests = [];
+      saveState();
+      updateUI();
+      alert(`[SISTEMA]: Missões de ${player.name} renovadas para o novo dia!`);
+    }
+
+    function logout() {
+      saveState();
+      player = null;
+      document.getElementById('game-screen').style.display = 'none';
+      document.getElementById('login-screen').style.display = 'block';
+      document.getElementById('new-player-pin').value = '';
+      renderProfilesList();
+    }
+
+    renderProfilesList();
+  </script>
+</body>
+</html>
